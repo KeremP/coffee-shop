@@ -43,6 +43,14 @@ export default function AdminPage() {
   });
   const [diagnosticCommand, setDiagnosticCommand] = useState("");
   const [diagnosticResult, setDiagnosticResult] = useState("");
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [editProduct, setEditProduct] = useState({
+    name: "",
+    description: "",
+    price: "",
+    image_url: "",
+    stock_quantity: "",
+  });
 
   useEffect(() => {
     if (user && user.role === "admin") {
@@ -121,6 +129,88 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Diagnostic failed:", error);
       setDiagnosticResult(`Error: ${error}`);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProductId(product.id);
+    setEditProduct({
+      name: product.name,
+      description: product.description || "",
+      price: product.price.toString(),
+      image_url: product.image_url || "",
+      stock_quantity: product.stock_quantity.toString(),
+    });
+    setShowAddProduct(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProductId(null);
+    setEditProduct({
+      name: "",
+      description: "",
+      price: "",
+      image_url: "",
+      stock_quantity: "",
+    });
+  };
+
+  const updateProduct = async (e: React.FormEvent, productId: number) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editProduct,
+          price: parseFloat(editProduct.price),
+          stock_quantity: parseInt(editProduct.stock_quantity),
+        }),
+      });
+
+      if (response.ok) {
+        setEditingProductId(null);
+        setEditProduct({
+          name: "",
+          description: "",
+          price: "",
+          image_url: "",
+          stock_quantity: "",
+        });
+        fetchProducts();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to update product");
+      }
+    } catch (error) {
+      console.error("Failed to update product:", error);
+      alert("Failed to update product");
+    }
+  };
+
+  const handleDelete = async (productId: number, productName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${productName}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        fetchProducts();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to delete product");
+      }
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+      alert("Failed to delete product");
     }
   };
 
@@ -329,42 +419,149 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-gray-200">
                   {products.map((product) => (
                     <tr key={product.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden">
-                          <img
-                            src={product.image_url || "/coffee-default.webp"}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = "/coffee-default.webp";
-                            }}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {product.description}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${product.price.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {product.stock_quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900 mr-3">
-                          Edit
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          Delete
-                        </button>
-                      </td>
+                      {editingProductId === product.id ? (
+                        <>
+                          <td colSpan={5} className="px-6 py-4">
+                            <form
+                              onSubmit={(e) => updateProduct(e, product.id)}
+                              className="bg-gray-50 p-4 rounded-lg"
+                            >
+                              <h3 className="text-lg font-bold mb-4">
+                                Edit Product
+                              </h3>
+                              <div className="grid grid-cols-2 gap-4">
+                                <input
+                                  type="text"
+                                  placeholder="Product Name"
+                                  value={editProduct.name}
+                                  onChange={(e) =>
+                                    setEditProduct({
+                                      ...editProduct,
+                                      name: e.target.value,
+                                    })
+                                  }
+                                  className="border rounded px-3 py-2"
+                                  required
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Price"
+                                  value={editProduct.price}
+                                  onChange={(e) =>
+                                    setEditProduct({
+                                      ...editProduct,
+                                      price: e.target.value,
+                                    })
+                                  }
+                                  className="border rounded px-3 py-2"
+                                  required
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Description"
+                                  value={editProduct.description}
+                                  onChange={(e) =>
+                                    setEditProduct({
+                                      ...editProduct,
+                                      description: e.target.value,
+                                    })
+                                  }
+                                  className="border rounded px-3 py-2"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Image URL (optional)"
+                                  value={editProduct.image_url}
+                                  onChange={(e) =>
+                                    setEditProduct({
+                                      ...editProduct,
+                                      image_url: e.target.value,
+                                    })
+                                  }
+                                  className="border rounded px-3 py-2"
+                                />
+                                <input
+                                  type="number"
+                                  placeholder="Stock Quantity"
+                                  value={editProduct.stock_quantity}
+                                  onChange={(e) =>
+                                    setEditProduct({
+                                      ...editProduct,
+                                      stock_quantity: e.target.value,
+                                    })
+                                  }
+                                  className="border rounded px-3 py-2"
+                                />
+                              </div>
+                              <div className="mt-4 flex gap-2">
+                                <button
+                                  type="submit"
+                                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                                >
+                                  Save Changes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEdit}
+                                  className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden">
+                              <img
+                                src={
+                                  product.image_url || "/coffee-default.webp"
+                                }
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = "/coffee-default.webp";
+                                }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {product.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {product.description}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${product.price.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {product.stock_quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDelete(product.id, product.name)
+                              }
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
