@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       ORDER BY u.created_at DESC
     `);
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result?.rows || []);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
