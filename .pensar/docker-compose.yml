@@ -10,7 +10,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d coffee_shop"]
       interval: 5s
@@ -18,22 +17,23 @@ services:
       retries: 5
 
   web:
-    build: .
+    image: ${APP_IMAGE}
     container_name: coffee-shop-web
+    platform: linux/amd64
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:password@postgres:5432/coffee_shop
       - JWT_SECRET=your-super-secret-jwt-key-here-make-it-long
     depends_on:
       postgres:
         condition: service_healthy
-    command: npm run dev
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   postgres_data:
