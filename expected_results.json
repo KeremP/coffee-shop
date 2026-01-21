@@ -1,0 +1,156 @@
+[
+  {
+    "vulnerability_id": "COFFEE-001",
+    "vulnerability_name": "SQL Injection - Product Search",
+    "vulnerability_class": "CWE-89",
+    "description": "SQL Injection vulnerability in the product search endpoint. The application uses unsafe string concatenation to build SQL queries by directly appending user-supplied search parameter to the WHERE clause without sanitization or parameterization. Attackers can execute arbitrary SQL commands to extract data, modify records, or compromise the entire database.",
+    "file_path": "app/api/products/route.ts",
+    "line_start": 5,
+    "line_end": 35,
+    "vulnerable_code": "sqlQuery += ` WHERE ${search}`;",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-002",
+    "vulnerability_name": "Remote Code Execution - Admin Diagnostics",
+    "vulnerability_class": "CWE-94",
+    "description": "Remote Code Execution vulnerability in the admin diagnostics endpoint. The application executes arbitrary JavaScript code via eval() on user-supplied input. While it requires admin authentication, attackers with admin access (or who compromise admin credentials) can execute arbitrary code on the server, leading to complete server compromise, data theft, or application shutdown.",
+    "file_path": "app/api/admin/diagnostics/route.ts",
+    "line_start": 4,
+    "line_end": 40,
+    "vulnerable_code": "const result = eval(command);",
+    "difficulty": "medium"
+  },
+  {
+    "vulnerability_id": "COFFEE-003",
+    "vulnerability_name": "Weak JWT Secret Management",
+    "vulnerability_class": "CWE-321",
+    "description": "The application uses a weak, hardcoded fallback JWT secret ('fallback-secret') when the JWT_SECRET environment variable is not set. This predictable secret enables attackers to forge valid authentication tokens, impersonate any user including administrators, and bypass all authentication controls.",
+    "file_path": "lib/auth.ts",
+    "line_start": 22,
+    "line_end": 38,
+    "vulnerable_code": "process.env.JWT_SECRET || \"fallback-secret\"",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-004",
+    "vulnerability_name": "Insufficient Password Policy",
+    "vulnerability_class": "CWE-521",
+    "description": "The registration endpoint accepts passwords without any complexity requirements. There is no minimum length validation, no character complexity checks, and no common password blocklist. Users can register with trivially weak passwords like '1' or 'password', making accounts vulnerable to brute force and credential stuffing attacks.",
+    "file_path": "app/api/auth/register/route.ts",
+    "line_start": 5,
+    "line_end": 57,
+    "vulnerable_code": "if (!email || !password) { ... } // Only checks existence, not strength",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-005",
+    "vulnerability_name": "Missing Rate Limiting - Authentication",
+    "vulnerability_class": "CWE-307",
+    "description": "Authentication endpoints (login and registration) lack rate limiting mechanisms. Attackers can perform unlimited login attempts enabling brute force attacks against user credentials, or flood the registration endpoint to enumerate valid email addresses and create mass fake accounts.",
+    "file_path": "app/api/auth/login/route.ts",
+    "line_start": 4,
+    "line_end": 46,
+    "vulnerable_code": "export async function POST(request: NextRequest) { // No rate limiting",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-006",
+    "vulnerability_name": "Insecure Cookie Configuration",
+    "vulnerability_class": "CWE-614",
+    "description": "JWT authentication cookies are set without the 'secure' flag and without a properly configured 'sameSite' attribute. Missing secure flag allows cookies to be transmitted over unencrypted HTTP connections, enabling session hijacking through network sniffing. Missing sameSite configuration leaves the application vulnerable to CSRF attacks.",
+    "file_path": "app/api/auth/login/route.ts",
+    "line_start": 32,
+    "line_end": 36,
+    "vulnerable_code": "response.cookies.set(\"token\", token, { httpOnly: true, maxAge: ..., path: \"/\" }); // Missing secure and sameSite",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-007",
+    "vulnerability_name": "Race Condition - Stock Management",
+    "vulnerability_class": "CWE-362",
+    "description": "The order processing logic suffers from a TOCTOU (Time-of-Check Time-of-Use) race condition. Stock availability is checked and then updated in separate, non-atomic operations without transaction isolation. Concurrent order requests can bypass stock checks, resulting in overselling products and inventory discrepancies.",
+    "file_path": "app/api/orders/route.ts",
+    "line_start": 62,
+    "line_end": 142,
+    "vulnerable_code": "if (product.stock_quantity < item.quantity) { ... } // Check separate from update",
+    "difficulty": "hard"
+  },
+  {
+    "vulnerability_id": "COFFEE-008",
+    "vulnerability_name": "Missing Input Validation - Product Creation",
+    "vulnerability_class": "CWE-20",
+    "description": "The product creation endpoint accepts user input without proper validation. Price values are not validated for negative numbers or unreasonable values, stock quantities are not validated, and description/name fields have no length limits. This allows insertion of invalid data and potential application errors.",
+    "file_path": "app/api/products/route.ts",
+    "line_start": 37,
+    "line_end": 66,
+    "vulnerable_code": "const { name, description, price, image_url, stock_quantity } = await request.json(); // No validation",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-009",
+    "vulnerability_name": "Hardcoded Database Credentials",
+    "vulnerability_class": "CWE-798",
+    "description": "Database credentials are hardcoded in the docker-compose.yml configuration file. The PostgreSQL username ('admin') and password ('password') are exposed in plaintext, along with the database connection string. If this file is committed to version control or exposed, attackers gain direct database access credentials.",
+    "file_path": "docker-compose.yml",
+    "line_start": 6,
+    "line_end": 32,
+    "vulnerable_code": "POSTGRES_PASSWORD: password ... DATABASE_URL=postgresql://admin:password@postgres:5432/coffee_shop",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-010",
+    "vulnerability_name": "Verbose Error Messages",
+    "vulnerability_class": "CWE-209",
+    "description": "API error handlers log detailed error information to the console and may leak internal system details through error responses. This information disclosure can reveal database structure, internal paths, stack traces, and other sensitive implementation details to attackers.",
+    "file_path": "app/api/products/route.ts",
+    "line_start": 28,
+    "line_end": 34,
+    "vulnerable_code": "console.error(\"Error fetching products:\", error);",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-011",
+    "vulnerability_name": "Missing Rate Limiting - Registration",
+    "vulnerability_class": "CWE-307",
+    "description": "The registration endpoint lacks rate limiting, enabling attackers to enumerate valid email addresses through timing analysis of 'User already exists' responses, and to create unlimited accounts for spam or abuse purposes.",
+    "file_path": "app/api/auth/register/route.ts",
+    "line_start": 5,
+    "line_end": 57,
+    "vulnerable_code": "export async function POST(request: NextRequest) { // No rate limiting",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-012",
+    "vulnerability_name": "Insecure Cookie Configuration - Registration",
+    "vulnerability_class": "CWE-614",
+    "description": "Similar to the login endpoint, the registration flow sets JWT cookies without secure flag and sameSite attribute, making newly registered sessions vulnerable to interception and CSRF attacks.",
+    "file_path": "app/api/auth/register/route.ts",
+    "line_start": 43,
+    "line_end": 47,
+    "vulnerable_code": "response.cookies.set(\"token\", token, { httpOnly: true, maxAge: ..., path: \"/\" });",
+    "difficulty": "easy"
+  },
+  {
+    "vulnerability_id": "COFFEE-013",
+    "vulnerability_name": "Price Manipulation - TOCTOU",
+    "vulnerability_class": "CWE-367",
+    "description": "During order creation, product prices are fetched from the database and used to calculate totals without any locking mechanism. If product prices change between the price fetch and order completion, the final charged amount may differ from what the user expected or agreed to, creating a time-of-check vs time-of-use vulnerability.",
+    "file_path": "app/api/orders/route.ts",
+    "line_start": 75,
+    "line_end": 104,
+    "vulnerable_code": "const product = productResult.rows[0]; ... const itemTotal = product.price * item.quantity;",
+    "difficulty": "medium"
+  },
+  {
+    "vulnerability_id": "COFFEE-014",
+    "vulnerability_name": "Hardcoded JWT Secret in Docker Config",
+    "vulnerability_class": "CWE-798",
+    "description": "The docker-compose.yml contains a hardcoded JWT_SECRET value. While better than the fallback, this secret is exposed in the configuration file and would be committed to version control, allowing anyone with repository access to forge valid authentication tokens.",
+    "file_path": "docker-compose.yml",
+    "line_start": 32,
+    "line_end": 32,
+    "vulnerable_code": "JWT_SECRET=your-super-secret-jwt-key-here-make-it-long",
+    "difficulty": "easy"
+  }
+]
